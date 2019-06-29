@@ -5,7 +5,7 @@ from model import StyledGenerator
 
 device = 'cpu'
 generator = StyledGenerator(512).to(device)
-generator.load_state_dict(torch.load('checkpoint/130000.model', map_location=device))
+generator.load_state_dict(torch.load('checkpoint/style-gan-256-140k.model', map_location=device))
 
 mean_style = None
 
