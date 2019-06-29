@@ -1,3 +1,5 @@
+import time
+
 import torch
 from torchvision import utils
 
@@ -16,8 +18,9 @@ step = 6
 
 shape = 4 * 2 ** step
 
-for i in range(10):
-    style = generator.mean_style(torch.randn(1024, 512).to(device))
+mean_steps = 1
+for i in range(mean_steps):
+    style = generator.mean_style(torch.randn(10, 512).to(device))
 
     if mean_style is None:
         mean_style = style
@@ -25,18 +28,18 @@ for i in range(10):
     else:
         mean_style += style
 
-mean_style /= 10
+mean_style /= mean_steps
 
-n_samples = 1
+n_samples = 20
 image = generator(
     torch.randn(n_samples, 512).to(device),
     step=step,
     alpha=1,
     mean_style=mean_style,
-    style_weight=0.7,
+    style_weight=-3,
 )
 
-utils.save_image(image, 'sample.png', nrow=10, normalize=True, range=(-1, 1))
+utils.save_image(image, 'sample_{}.png'.format(time.time()), nrow=10, normalize=True, range=(-1, 1))
 
 if generate_mixing:
     for j in range(20):
