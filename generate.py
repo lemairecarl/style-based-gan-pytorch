@@ -1,5 +1,6 @@
 import time
 
+import numpy as np
 import torch
 from torchvision import utils
 
@@ -8,7 +9,7 @@ from model import StyledGenerator
 
 generate_mixing = False
 
-device = 'cpu'
+device = 'cuda'
 generator = StyledGenerator(512).to(device)
 generator.load_state_dict(torch.load('checkpoint/style-gan-256-140k.model', map_location=device))
 
@@ -30,49 +31,32 @@ for i in range(mean_steps):
 
 mean_style /= mean_steps
 
-n_samples = 20
-image = generator(
-    torch.randn(n_samples, 512).to(device),
-    step=step,
-    alpha=1,
-    mean_style=mean_style,
-    style_weight=-3,
-)
+
+def generate_image():
+    with torch.no_grad():
+        image = generator(
+            torch.randn(1, 512).to(device),
+            step=step,
+            alpha=1,
+            mean_style=mean_style,
+            style_weight=-3,
+        )
+    return image.squeeze(0)
+
+
+# while True:
+#     a = input()
+#     im = generate_image()
+#     im = im[:, :4, :4]
+#     print(im.cpu().numpy().tobytes())
+
+image = generate_image()
+orig_shape = image.size()
+print(orig_shape)
+expected_len = np.prod(orig_shape) * 4
+bytes = image.cpu().numpy().tobytes()
+assert len(bytes) == expected_len
+image = np.frombuffer(bytes, dtype=np.float32).reshape(orig_shape)
+image = torch.from_numpy(image)
 
 utils.save_image(image, 'sample_{}.png'.format(time.time()), nrow=10, normalize=True, range=(-1, 1))
-
-if generate_mixing:
-    for j in range(20):
-        source_code = torch.randn(9, 512).to(device)
-        target_code = torch.randn(5, 512).to(device)
-    
-        images = [torch.ones(1, 3, shape, shape).to(device) * -1]
-    
-        source_image = generator(
-            source_code, step=step, alpha=1, mean_style=mean_style, style_weight=0.7
-        )
-        target_image = generator(
-            target_code, step=step, alpha=1, mean_style=mean_style, style_weight=0.7
-        )
-    
-        images.append(source_image)
-    
-        for i in range(5):
-            image = generator(
-                [target_code[i].unsqueeze(0).repeat(9, 1), source_code],
-                step=step,
-                alpha=1,
-                mean_style=mean_style,
-                style_weight=0.7,
-                mixing_range=(0, 1),
-            )
-            images.append(target_image[i].unsqueeze(0))
-            images.append(image)
-    
-        # print([i.shape for i in images])
-    
-        images = torch.cat(images, 0)
-    
-        utils.save_image(
-            images, f'sample_mixing_{j}.png', nrow=10, normalize=True, range=(-1, 1)
-        )
