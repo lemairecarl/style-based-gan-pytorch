@@ -1,4 +1,5 @@
 import time
+import sys
 
 import numpy as np
 import torch
@@ -7,7 +8,7 @@ from torchvision import utils
 from model import StyledGenerator
 
 
-generate_mixing = False
+img_byte_size = 3 * 256 * 256 * 4
 
 device = 'cuda'
 generator = StyledGenerator(512).to(device)
@@ -44,19 +45,12 @@ def generate_image():
     return image.squeeze(0)
 
 
-# while True:
-#     a = input()
-#     im = generate_image()
-#     im = im[:, :4, :4]
-#     print(im.cpu().numpy().tobytes())
-
-image = generate_image()
-orig_shape = image.size()
-print(orig_shape)
-expected_len = np.prod(orig_shape) * 4
-bytes = image.cpu().numpy().tobytes()
-assert len(bytes) == expected_len
-image = np.frombuffer(bytes, dtype=np.float32).reshape(orig_shape)
-image = torch.from_numpy(image)
-
-utils.save_image(image, 'sample_{}.png'.format(time.time()), nrow=10, normalize=True, range=(-1, 1))
+while True:
+    print('[Server] Ready', file=sys.stderr)
+    a = sys.stdin.buffer.read(1)
+    print('[Server] I has read', file=sys.stderr)
+    im = generate_image()
+    bytes = im.cpu().numpy().tobytes()
+    assert len(bytes) == img_byte_size
+    sys.stdout.buffer.write(bytes)
+    print('[Server] I has written', file=sys.stderr)
