@@ -27,15 +27,19 @@ class SimpleGenerator:
                 self.mean_style += style
         self.mean_style /= mean_steps
     
-    def generate(self):
+    def generate(self, latent_vec):
         step = 6
         image = self.generator(
-            torch.randn(1, 512).to(self.device),
+            latent_vec.unsqueeze(0).to(self.device),
             step=step,
             alpha=1,
             mean_style=self.mean_style,
             style_weight=-3,
         )
+        # Fit range into [0, 1]
+        image.clamp_(-1, 1)
+        image = (image + 1.0) / 2.0
+        # Remove batch dim
         return image.squeeze(0)
 
 
