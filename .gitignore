@@ -1,3 +1,5 @@
+stylegan.egg-info/
+
 *.png
 *.pt
 *.model

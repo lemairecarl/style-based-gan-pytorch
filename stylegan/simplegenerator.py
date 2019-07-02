@@ -1,36 +1,47 @@
 import os
 import time
+from collections import OrderedDict
 
 import torch
+import torch.jit
 from torchvision import utils
 
 from stylegan.model import StyledGenerator
+
+_model_path = 'stylegan/checkpoint/style-gan-256-140k.model'
 
 
 class SimpleGenerator:
     def __init__(self, model_file=None):
         if model_file is None:
-            model_file = os.environ['STYLEGAN_MODEL']  # 'checkpoint/style-gan-256-140k.model'
+            if os.path.isfile(_model_path):
+                model_file = _model_path
+            else:
+                model_file = os.environ['STYLEGAN_MODEL']
         
         self.device = 'cpu'
         self.generator = StyledGenerator(512).to(self.device)
-        self.generator.load_state_dict(torch.load(model_file, map_location=self.device))
+        self.generator.eval()
         
-        self.mean_style = None
-        mean_steps = 1
-        for i in range(mean_steps):
-            style = self.generator.mean_style(torch.randn(10, 512).to(self.device))
-            if self.mean_style is None:
-                self.mean_style = style
-            
-            else:
-                self.mean_style += style
-        self.mean_style /= mean_steps
+        # Fix and load state dict
+        sd = torch.load(model_file, map_location=self.device)
+        new_sd = OrderedDict()
+        for k, v in sd.items():
+            if 'weight_orig' in k:
+                k = k.replace('weight_orig', 'weight')
+                fan_in = v.size(1) * v[0][0].numel()
+                v *= torch.sqrt(torch.tensor(2 / fan_in))
+            new_sd[k] = v
+        del sd
+        self.generator.load_state_dict(new_sd)
+        
+        # Trace
+        self.traced_model = torch.jit.trace(self.generator, torch.randn(1, 512).to(self.device), check_trace=False)
+        del self.generator
     
     def generate(self, latent_vec):
-        image = self.generator(
-            latent_vec.unsqueeze(0).to(self.device),
-            step=6
+        image = self.traced_model(
+            latent_vec.unsqueeze(0).to(self.device)
         )
         # Fit range into [0, 1]
         image.clamp_(-1, 1)
@@ -40,4 +51,4 @@ class SimpleGenerator:
 
 
 def save_image(image):
-    utils.save_image(image, 'sample_{}.png'.format(time.time()), nrow=10, normalize=True, range=(-1, 1))
+    utils.save_image(image, 'sample_{}.png'.format(time.time()), nrow=10, normalize=True, range=(0, 1))

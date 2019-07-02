@@ -10,49 +10,6 @@ from math import sqrt
 import random
 
 
-def init_linear(linear):
-    init.xavier_normal(linear.weight)
-    linear.bias.data.zero_()
-
-
-def init_conv(conv, glu=True):
-    init.kaiming_normal(conv.weight)
-    if conv.bias is not None:
-        conv.bias.data.zero_()
-
-
-class EqualLR:
-    def __init__(self, name):
-        self.name = name
-
-    def compute_weight(self, module):
-        weight = getattr(module, self.name + '_orig')
-        fan_in = weight.data.size(1) * weight.data[0][0].numel()
-
-        return weight * sqrt(2 / fan_in)
-
-    @staticmethod
-    def apply(module, name):
-        fn = EqualLR(name)
-
-        weight = getattr(module, name)
-        del module._parameters[name]
-        module.register_parameter(name + '_orig', nn.Parameter(weight.data))
-        module.register_forward_pre_hook(fn)
-
-        return fn
-
-    def __call__(self, module, input):
-        weight = self.compute_weight(module)
-        setattr(module, self.name, weight)
-
-
-def equal_lr(module, name='weight'):
-    EqualLR.apply(module, name)
-
-    return module
-
-
 class PixelNorm(nn.Module):
     def __init__(self):
         super().__init__()
@@ -86,7 +43,7 @@ class EqualConv2d(nn.Module):
         conv = nn.Conv2d(*args, **kwargs)
         conv.weight.data.normal_()
         conv.bias.data.zero_()
-        self.conv = equal_lr(conv)
+        self.conv = conv
 
     def forward(self, input):
         return self.conv(input)
@@ -100,7 +57,7 @@ class EqualLinear(nn.Module):
         linear.weight.data.normal_()
         linear.bias.data.zero_()
 
-        self.linear = equal_lr(linear)
+        self.linear = linear
 
     def forward(self, input):
         return self.linear(input)
@@ -206,12 +163,12 @@ class StyledConvBlock(nn.Module):
                 in_channel, out_channel, kernel_size, padding=padding
             )
 
-        self.noise1 = equal_lr(NoiseInjection(out_channel))
+        self.noise1 = NoiseInjection(out_channel)
         self.adain1 = AdaptiveInstanceNorm(out_channel, style_dim)
         self.lrelu1 = nn.LeakyReLU(0.2)
 
         self.conv2 = EqualConv2d(out_channel, out_channel, kernel_size, padding=padding)
-        self.noise2 = equal_lr(NoiseInjection(out_channel))
+        self.noise2 = NoiseInjection(out_channel)
         self.adain2 = AdaptiveInstanceNorm(out_channel, style_dim)
         self.lrelu2 = nn.LeakyReLU(0.2)
 
@@ -263,7 +220,7 @@ class Generator(nn.Module):
 
         # self.blur = Blur()
 
-    def forward(self, style, noise, step=0, alpha=-1, mixing_range=(-1, -1)):
+    def forward(self, style, noise, step=6, alpha=-1, mixing_range=(-1, -1)):
         out = noise[0]
 
         if len(style) < 2:
@@ -327,7 +284,7 @@ class StyledGenerator(nn.Module):
         self,
         input,
         noise=None,
-        step=0,
+        step=6,
         alpha=-1,
         mean_style=None,
         style_weight=0,
