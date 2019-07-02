@@ -28,13 +28,9 @@ class SimpleGenerator:
         self.mean_style /= mean_steps
     
     def generate(self, latent_vec):
-        step = 6
         image = self.generator(
             latent_vec.unsqueeze(0).to(self.device),
-            step=step,
-            alpha=1,
-            mean_style=self.mean_style,
-            style_weight=-3,
+            step=6
         )
         # Fit range into [0, 1]
         image.clamp_(-1, 1)
