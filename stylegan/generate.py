@@ -1,4 +1,5 @@
 import time
+from collections import OrderedDict
 
 import torch
 from torchvision import utils
@@ -10,7 +11,17 @@ generate_mixing = False
 
 device = 'cpu'
 generator = StyledGenerator(512).to(device)
-generator.load_state_dict(torch.load('checkpoint/style-gan-256-140k.model', map_location=device))
+# generator.load_state_dict(torch.load('checkpoint/style-gan-256-140k.model', map_location=device))
+sd = torch.load('checkpoint/style-gan-256-140k.model', map_location=device)
+new_sd = OrderedDict()
+for k, v in sd.items():
+    if 'weight_orig' in k:
+        k = k.replace('weight_orig', 'weight')
+        fan_in = v.size(1) * v[0][0].numel()
+        v *= torch.sqrt(torch.tensor(2 / fan_in))
+    new_sd[k] = v
+del sd
+generator.load_state_dict(new_sd)
 
 mean_style = None
 

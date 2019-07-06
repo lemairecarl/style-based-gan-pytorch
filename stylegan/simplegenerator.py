@@ -29,21 +29,36 @@ class SimpleGenerator:
         
         # Fix and load state dict TODO cache
         sd = torch.load(model_file, map_location=self.device)
-        new_sd = OrderedDict()
-        for k, v in sd.items():
-            if 'weight_orig' in k:
-                k = k.replace('weight_orig', 'weight')
-                fan_in = v.size(1) * v[0][0].numel()
-                v *= torch.sqrt(torch.tensor(2 / fan_in))
-            new_sd[k] = v
-        del sd
-        generator.load_state_dict(new_sd)
+        # new_sd = OrderedDict()
+        # for k, v in sd.items():
+        #     if 'weight_orig' in k:
+        #         k = k.replace('weight_orig', 'weight')
+        #         fan_in = v.size(1) * v[0][0].numel()
+        #         v *= torch.sqrt(torch.tensor(2 / fan_in))
+        #     new_sd[k] = v
+        # del sd
+        # generator.load_state_dict(new_sd)
+        generator.load_state_dict(sd)
         
         self.model = generator
+
+        mean_steps = 1
+        mean_style = None
+        for i in range(mean_steps):
+            style = generator.mean_style(torch.randn(10, 512).to(self.device))
+    
+            if mean_style is None:
+                mean_style = style
+    
+            else:
+                mean_style += style
+
+        mean_style /= mean_steps
+        self.mean_style = mean_style
     
     def generate(self, latent_vecs):
         images = self.model(
-            latent_vecs.to(self.device)
+            latent_vecs.to(self.device), step=6, mean_style=self.mean_style, style_weight=-3.0
         )
         # Fit range into [0, 1]
         images.clamp_(-1, 1)
