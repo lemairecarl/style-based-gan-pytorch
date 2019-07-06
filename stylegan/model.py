@@ -287,7 +287,7 @@ class StyledGenerator(nn.Module):
         step=6,
         alpha=-1,
         mean_style=None,
-        style_weight=0,
+        style_weight=-3.0,
         mixing_range=(-1, -1),
     ):
         styles = []
@@ -306,6 +306,7 @@ class StyledGenerator(nn.Module):
                 size = 4 * 2 ** i
                 noise.append(torch.randn(batch, 1, size, size, device=input[0].device))
 
+        mean_style = torch.rand_like(input[0])
         if mean_style is not None:
             styles_norm = []
 
