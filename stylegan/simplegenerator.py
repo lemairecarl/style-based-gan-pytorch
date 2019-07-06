@@ -16,44 +16,33 @@ _traced_model_path_dir = 'stylegan/checkpoint'
 class SimpleGenerator:
     def __init__(self, model_file=None):
         self.device = 'cpu'
-        self.traced_model = None
+        self.model = None
         
-        if os.path.isfile(_traced_model_path):
-            self.traced_model = torch.jit.load(_traced_model_path, map_location=self.device)
-        elif os.path.isfile(os.environ.get('STYLEGAN_TRACED_MODEL', 'xx420BLAZEITxx')):
-            self.traced_model = torch.jit.load(os.environ['STYLEGAN_TRACED_MODEL'], map_location=self.device)
-            
-        if self.traced_model is None:
-            if os.path.isdir(_traced_model_path_dir):
-                if model_file is None:
-                    if os.path.isfile(_weights_path):
-                        model_file = _weights_path
-                    else:
-                        model_file = os.environ['STYLEGAN_MODEL']
-                
-                generator = StyledGenerator(512).to(self.device)
-                generator.eval()
-                
-                # Fix and load state dict
-                sd = torch.load(model_file, map_location=self.device)
-                new_sd = OrderedDict()
-                for k, v in sd.items():
-                    if 'weight_orig' in k:
-                        k = k.replace('weight_orig', 'weight')
-                        fan_in = v.size(1) * v[0][0].numel()
-                        v *= torch.sqrt(torch.tensor(2 / fan_in))
-                    new_sd[k] = v
-                del sd
-                generator.load_state_dict(new_sd)
-                
-                # Trace
-                self.traced_model = torch.jit.trace(generator, torch.randn(5, 512).to(self.device), check_trace=False)
-                self.traced_model.save(_traced_model_path)
+        if model_file is None:
+            if os.path.isfile(_weights_path):
+                model_file = _weights_path
             else:
-                raise RuntimeError('Could not find traced model file.')
+                model_file = os.environ['STYLEGAN_MODEL']
+        
+        generator = StyledGenerator(512).to(self.device)
+        generator.eval()
+        
+        # Fix and load state dict TODO cache
+        sd = torch.load(model_file, map_location=self.device)
+        new_sd = OrderedDict()
+        for k, v in sd.items():
+            if 'weight_orig' in k:
+                k = k.replace('weight_orig', 'weight')
+                fan_in = v.size(1) * v[0][0].numel()
+                v *= torch.sqrt(torch.tensor(2 / fan_in))
+            new_sd[k] = v
+        del sd
+        generator.load_state_dict(new_sd)
+        
+        self.model = generator
     
     def generate(self, latent_vecs):
-        images = self.traced_model(
+        images = self.model(
             latent_vecs.to(self.device)
         )
         # Fit range into [0, 1]
