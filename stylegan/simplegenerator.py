@@ -41,11 +41,14 @@ class SimpleGenerator:
         generator.load_state_dict(sd)
         
         self.model = generator
+        self.mean_style = None
+        self.reinit_mean_style()
 
+    def reinit_mean_style(self):
         mean_steps = 1
         mean_style = None
         for i in range(mean_steps):
-            style = generator.mean_style(torch.randn(10, 512).to(self.device))
+            style = self.model.mean_style(torch.randn(10, 512).to(self.device))
     
             if mean_style is None:
                 mean_style = style
@@ -56,10 +59,15 @@ class SimpleGenerator:
         mean_style /= mean_steps
         self.mean_style = mean_style
     
-    def generate(self, latent_vecs):
-        images = self.model(
-            latent_vecs.to(self.device), step=6, mean_style=self.mean_style, style_weight=-3.0
-        )
+    def generate(self, latent_vecs, haunted=False):
+        if haunted:
+            images = self.model(
+                latent_vecs.to(self.device), step=6, mean_style=self.mean_style, style_weight=-3.0
+            )
+        else:
+            images = self.model(
+                latent_vecs.to(self.device), step=6
+            )
         # Fit range into [0, 1]
         images.clamp_(-1, 1)
         images = (images + 1.0) / 2.0
