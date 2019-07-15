@@ -60,14 +60,15 @@ class SimpleGenerator:
         self.mean_style = mean_style
     
     def generate(self, latent_vecs, haunted=False):
-        if haunted:
-            images = self.model(
-                latent_vecs.to(self.device), step=6, mean_style=self.mean_style, style_weight=-3.0
-            )
-        else:
-            images = self.model(
-                latent_vecs.to(self.device), step=6
-            )
+        with torch.no_grad():
+            if haunted:
+                images = self.model(
+                    latent_vecs.to(self.device), step=6, mean_style=self.mean_style, style_weight=-3.0
+                )
+            else:
+                images = self.model(
+                    latent_vecs.to(self.device), step=6
+                )
         # Fit range into [0, 1]
         images.clamp_(-1, 1)
         images = (images + 1.0) / 2.0

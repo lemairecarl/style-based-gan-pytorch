@@ -50,7 +50,7 @@ image = generator(
     style_weight=-3,
 )
 
-utils.save_image(image, 'sample_{}.png'.format(time.time()), nrow=10, normalize=True, range=(-1, 1))
+utils.save_image(image, 'output/sample_{}.png'.format(time.time()), nrow=10, normalize=True, range=(-1, 1))
 
 if generate_mixing:
     for j in range(20):
