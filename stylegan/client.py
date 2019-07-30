@@ -1,3 +1,4 @@
+import os
 import subprocess
 
 import numpy as np
@@ -11,7 +12,8 @@ class GeneratorClient:
     img_byte_size = 3 * img_size * img_size * 4
     
     def __init__(self):
-        self.server = subprocess.Popen(['python', '/Users/carl/recherche/style-based-gan-pytorch/stylegan/server.py'],
+        server_script_path = os.environ.get('CESTUNVRAIREGAL', '/Users/carl/recherche/style-based-gan-pytorch/stylegan/server.py')
+        self.server = subprocess.Popen(['python', server_script_path],
                                        bufsize=0, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
 
     def generate(self, latent_vec, is_h_mode=True):
