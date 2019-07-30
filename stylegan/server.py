@@ -18,7 +18,7 @@ def decode_message(message):
 
 
 img_byte_size = 3 * 256 * 256 * 4
-generator = SimpleGenerator()
+generator = SimpleGenerator(device='cuda')
 
 while True:
     print('[Server] Ready', file=sys.stderr)

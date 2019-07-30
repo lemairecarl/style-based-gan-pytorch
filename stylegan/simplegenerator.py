@@ -14,8 +14,8 @@ _traced_model_path_dir = 'stylegan/checkpoint'
 
 
 class SimpleGenerator:
-    def __init__(self, model_file=None):
-        self.device = 'cpu'
+    def __init__(self, model_file=None, device='cpu'):
+        self.device = device
         self.model = None
         
         if model_file is None:
